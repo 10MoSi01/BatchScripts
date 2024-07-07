@@ -17,6 +17,11 @@
 :: 
 :: Full license text available at [link to your LICENSE file or website if applicable].
 
+:: This script was created to somewhat automate the process of manually estabilishing
+:: wireless debugging connection between a physical android devices and your development
+:: pc.
+:: The need to manually connect a device arose when Android Studio failed to pair
+:: or find the device on the same network.
 
 :: Usage
 :: This file should be ran with admin privilages!
@@ -26,6 +31,16 @@
 ::     2. assign "adbDir" variable of this script
 ::     3. script can be ran from adb's directory so "cd" points to it
 ::     4. provide as input when asked during runtime
+
+:: Troubleshooting
+::     1. Make sure that both devices are connected to the same network
+::     2. Make sure the IP:PORT provided is correct and is in correct order without any spaces in or around.
+::     3. Try disabling MAC randomization for both the android and the development devices.
+::         Newer devices usually comes with this setting turned on by default.
+::     4. Make sure both devices are discoverable on the network
+::         For windows, this can easily be done by setting the network profile type to private
+::         or by enabling it the first time when connecting to the network.
+::     5. Close Android-Studio, and let the script restart adb when prompted.
 
 
 @echo off
@@ -136,6 +151,7 @@ if errorlevel 1 (
     goto Connect
 )
 
+:Exit
 echo.
 echo Wireless debugging setup completed successfully.
 pause
