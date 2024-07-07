@@ -1,3 +1,33 @@
+:: Project Name: BatchScripts
+:: File: adb-wireless-pair.bat
+:: License: Sustainable Use License (SUL), Version 1.0
+:: Author: 10MoSo01
+:: 
+:: This file is part of BatchScripts.
+:: 
+:: You are free to view, use, and modify this file under the terms of the
+:: Sustainable Use License (SUL), Version 1.0. You may not distribute,
+:: repackage, or sell this file or any derivative works for any commercial purpose.
+:: 
+:: For more details, see the LICENSE file in the root directory of this project.
+:: 
+:: This software is provided "as is", without warranty of any kind.
+:: 
+:: Encouraged: Use in ways that contribute to social and environmental sustainability.
+:: 
+:: Full license text available at [link to your LICENSE file or website if applicable].
+
+
+:: Usage
+:: This file should be ran with admin privilages!
+::
+:: Path to adb's directory can be assigned/supplied in multiple ways:
+::     1. supllied as the first command line parameter.
+::     2. assign "adbDir" variable of this script
+::     3. script can be ran from adb's directory so "cd" points to it
+::     4. provide as input when asked during runtime
+
+
 @echo off
 
 :: Clear variables
