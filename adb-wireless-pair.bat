@@ -15,15 +15,19 @@
 :: 
 :: Encouraged: Use in ways that contribute to social and environmental sustainability.
 :: 
-:: Full license text available at [link to your LICENSE file or website if applicable].
+:: Full license text available at [https://github.com/10MoSi01/BatchScripts/blob/main/LICENSE].
 
-:: This script was created to somewhat automate the process of manually estabilishing
-:: wireless debugging connection between a physical android devices and your development
-:: pc.
-:: The need to manually connect a device arose when Android Studio failed to pair
-:: or find the device on the same network.
 
+:: --------
+:: Info
+:: --------
+:: This script was created to manually pair and/or connect
+:: an android device after Android Studio fails to do so.
+
+
+:: --------
 :: Usage
+:: --------
 :: This file should be ran with admin privilages!
 ::
 :: Path to adb's directory can be assigned/supplied in multiple ways:
@@ -32,15 +36,27 @@
 ::     3. script can be ran from adb's directory so "cd" points to it
 ::     4. provide as input when asked during runtime
 
+
+:: --------
 :: Troubleshooting
-::     1. Make sure that both devices are connected to the same network
-::     2. Make sure the IP:PORT provided is correct and is in correct order without any spaces in or around.
-::     3. Try disabling MAC randomization for both the android and the development devices.
+:: --------
+::     1. Make sure the script is run with admin privilages.
+::     2. Make sure that both devices are connected to the same network
+::     3. Make sure the IP:PORT provided is correct and is in correct order without any spaces in or around.
+::     4. Try disabling MAC randomization for both the android and the development devices.
 ::         Newer devices usually comes with this setting turned on by default.
-::     4. Make sure both devices are discoverable on the network
+::     5. Make sure both devices are discoverable on the network
 ::         For windows, this can easily be done by setting the network profile type to private
 ::         or by enabling it the first time when connecting to the network.
-::     5. Close Android-Studio, and let the script restart adb when prompted.
+::     6. Close Android-Studio, and let the script restart adb when prompted.
+:: --------
+:: Additionally methods to try
+:: --------
+::     1. Disable and then re-enable wireless debugging on android device.
+::         Maybe repeat this step several times until the system updates IP:Port.
+::     2. Disconnect and then re-connect to the network.
+::     3. Incase the android system isn't displaying the updated ip:port,
+::        try reopening the settings app.
 
 
 @echo off
@@ -53,6 +69,7 @@
 set adbDir="G:\Android\android-sdk\platform-tools"
 set adbExe=adb.exe
 set adb=
+set initialMethodChoice=
 set ipPort=
 set pairCode=
 set newIpPort=
@@ -65,28 +82,52 @@ set ADB_TRACE=
 :: --------------------------------
 :: Initial Setup
 :: --------------------------------
-:SetupADB
-:: Find adb.exe
+
+:: Locate adb.exe
+:FindADB
 if exist %adbDir%\%adbExe% (
     :: Script variable
     echo [i] Using %adbExe% at %adbDir%...
     set adb=%adbDir%\%adbExe%
-    goto RestartADB
+    goto InitialMethodSelection
 ) else if exist %~1\%adbExe% (
     :: Command line argument
     echo [i] Using %adbExe% at %~1...
     set adb=%~1\%adbExe%
-    goto RestartADB
+    goto InitialMethodSelection
 ) else if exist %cd%\%adbExe% (
     :: Current directory
     echo [i] Using %adbExe% at %cd%...
     set adb=%cd%\%adbExe%
-    goto RestartADB
+    goto InitialMethodSelection
 ) else (
     :: Not found
     echo [i] Adb not found! Please provide adb's directory path...
     set /p adbDir="[+] adb directory: "
-    goto SetupADB
+    goto FindADB
+)
+
+
+:: --------------------------------
+:: Initial method selection
+:: --------------------------------
+
+:InitialMethodSelection
+echo.
+echo [i] What to do?
+echo     [1] Pair and connect a new device
+echo     [2] Connect already paired device
+
+:InitialMethodSelectionSubBloc
+set /p initialMethodChoice="[+] Select an operation: "
+
+if "%initialMethodChoice%"=="1" (
+    goto RestartADB
+) else if "%initialMethodChoice%"=="2" (
+    goto Connect
+) else (
+    echo [i] Invalid choice!
+    goto InitialMethodSelectionSubBloc
 )
 
 
@@ -94,6 +135,7 @@ if exist %adbDir%\%adbExe% (
 :: Restarts ADB
 :: Its always a good idea.
 :: --------------------------------
+
 :RestartADB
 echo.
 set /p restartADB="[+] Restart adb? (y/[n]): "
@@ -101,12 +143,11 @@ if "%restartADB%"=="" (
     echo [i] Skip restarting adb...
     goto Pair
 )
-if not "%restartADB%"=="y" if not "%restartADB%"=="Y" (
+if /i "%restartADB%"=="n" (
     echo [i] Skip restarting adb...
     goto Pair
 )
-
-echo [i] Restarting adb...
+:: continue on to Kill adb...
 
 :: Kill adb
 echo [i] Killing adb server...
@@ -118,6 +159,8 @@ net stop winnat
 FOR /F "tokens=1" %%x IN ('tasklist /NH /FI "IMAGENAME eq %androidStudioExe%"') DO (
     if "%%x"=="%androidStudioExe%" (
         echo [i] Waiting for Android Studio to start ADB daemon...
+        
+        :: Wait a while and then continue
         timeout /t 2 /nobreak > nul
 
         :: Check if Android Stdio has started adb by finding the adb.exe process
@@ -153,7 +196,7 @@ echo [i] adb has been restarted!
 :Pair
 echo.
 :: Prompt for IP:Port and Pair Code
-echo [i] Navigate to (Developer Options > Wireless Debugging > Pair device with pairing code)
+echo [i] Navigate to (Developer Options ^> Wireless Debugging ^> Pair device with pairing code)
 set /p ipPort="[+] Enter IP:PORT: "
 set /p pairCode="[+] Enter Pair Code: "
 
@@ -162,15 +205,41 @@ echo [i] Pairing device...
 %adb% pair %ipPort% %pairCode%
 if errorlevel 1 (
     echo [!] Pairing failed!
+
     :: Wait a second and then continue
     timeout /t 1 /nobreak>nul
+
+    echo.
+    echo [i] Try make sure these requirements are met:
+    echo     1. Make sure the script is run with admin privilages.
+    echo     2. Make sure that both devices are connected to the same network
+    echo     3. Make sure the IP:PORT provided is correct and is in correct order without any spaces in or around.
+    echo     4. Try disabling MAC randomization for both the android and the development devices.
+    echo         Newer devices usually comes with this setting turned on by default.
+    echo     5. Make sure both devices are discoverable on the network
+    echo         For windows, this can easily be done by setting the network profile type to private
+    echo         or by enabling it the first time when connecting to the network.
+    echo     6. Close Android-Studio, and let the script restart adb when prompted.
+
+    echo.
+    echo [i] Additionally try these methods:
+    echo     1. Disable and then re-enable wireless debugging on android device.
+    echo         Maybe repeat this step several times until the system updates IP:Port.
+    echo     2. Disconnect and then re-connect to the network.
+    echo     3. Incase the android system isn't displaying the updated ip:port,
+    echo        try reopening the settings app.
+    
+    echo.
 
     :: Fixes/Troubleshoot
     :: see [https://stackoverflow.com/questions/33316006/adb-error-error-protocol-fault-couldnt-read-status-invalid-argument]
     echo [i] Kindly double-check if the ip:port and pair code entered are correct.
-    echo [i] If the input provided was correct, common fixes and troubleshooting can be tries...
-    set /p tryFixesAndTroubleshooters="[+] Try common fixes and troubleshooting steps? ([y]/n)"
-    if "%tryFixesAndTroubleshooters%"=="" if "%tryFixesAndTroubleshooters%"=="y" if "%tryFixesAndTroubleshooters%"=="Y" (
+    echo [i] If the input provided was correct and the issue still persits,
+    echo     common fixes and troubleshooting can be tried...
+    set /p tryFixesAndTroubleshooters="[+] Try common fixes and troubleshooting steps? ([y]/n): "
+    if "%tryFixesAndTroubleshooters%"=="" (
+        goto CommonFixesAndTroubleshooting
+    ) else if /i "%tryFixesAndTroubleshooters%"=="y" (
         goto CommonFixesAndTroubleshooting
     ) else (
         echo [i] Skip common fixes and troubleshooting steps...
@@ -179,6 +248,8 @@ if errorlevel 1 (
         goto Pair
     )
 
+) else (
+    echo [i] Device paired successfully!
 )
 
 
@@ -190,23 +261,42 @@ if errorlevel 1 (
 :Connect
 echo.
 :: Prompt for re-entering IP:Port if necessary
-echo [i] If the IP Addr or PORT has changed, reenter.
-echo     Otherwise, press Enter to use the previous IP:Port.
-set /p newIpPort="[+] Re-enter IP:Port (optional, read the notice above): "
-if "%newIpPort%"=="" set newIpPort=%ipPort%
+if "%initialMethodChoice%"=="1" (
+    :: Pairing and connecting to a new device
+    echo [i] If the IP Addr or PORT has changed, reenter.
+    echo     Otherwise, press Enter to use the previous IP:Port.
+    set /p newIpPort="[+] Re-enter IP:Port (optional, read the notice above): "
+    if "%newIpPort%"=="" set newIpPort=%ipPort%
+) else (
+    :: Connecting to a previously paired device
+    set /p newIpPort="[+] Enter IP:Port : "
+    if "%newIpPort%"=="" (
+        echo [i] Invalid input!
+        goto Connect
+    )
+)
 
 :: Establishing connection for wireless debugging
 echo [i] Establishing connection, initializing wireless debugging...
 %adb% connect %newIpPort%
-if errorlevel 1 (
+:: if errorlevel 1 (
+if not "%errorlevel%"=="" (
     echo [!] Connection failed!
     :: Wait a second and then continue
     timeout /t 1 /nobreak>nul    
     echo.
     echo [i] Please double-check the IP:Port and try again...
     goto Connect
+) else if not errorlevel 0 (
+    echo [!] Connection failed!
+    :: Wait a second and then continue
+    timeout /t 1 /nobreak>nul    
+    echo.
+    echo [i] Please double-check the IP:Port and try again...
+    goto Connect
+) else (
+    goto ExitSuccess
 )
-goto ExitSuccess
 
 
 :: --------------------------------
@@ -216,23 +306,39 @@ goto ExitSuccess
 :CommonFixesAndTroubleshooting
 
 :: Restart netsh PortProxy interface
-set /p resetPortProxy="[+] Reset PortProxy? (y/[n]) : "
-if "%resetPortProxy%"=="y" if "%resetPortProxy%"=="Y" (
-    echo [i] Resetting port-proxy interface...
-    netsh interface portproxy reset
+set /p resetPortProxy="[+] Reset PortProxy? ([y]/n) : "
+if "%resetPortProxy%"=="" (
+    goto ResetPortProxy
+) else if /i "%resetPortProxy%"=="y" (
+    goto ResetPortProxy
 ) else (
     echo [i] Skip reset port-proxy...
+    goto EnableAdbTraceAll
 )
 
+:ResetPortProxy
+echo [i] Resetting port-proxy interface...
+netsh interface portproxy reset
+
 :: Enable adb verbose track stack
+:EnableAdbTraceAll
 set /p enableAdbTraceAll="[+] Enable adb trace all? ([y]/n)"
-if "%enableAdbTraceAll%"=="" if "%enableAdbTraceAll%"=="y" if "%enableAdbTraceAll%"=="Y" (
+if "%enableAdbTraceAll%"=="" (
+    echo [i] Enabling adb trace all...
+    set ADB_TRACE=all
+) else if /i "%enableAdbTraceAll%"=="y" (
+    echo [i] Enabling adb trace all...
     set ADB_TRACE=all
 ) else (
     echo [i] Skip enable adb trace all...
 )
 
 :: Continue
+::  Common Fixes and Troubleshooting is
+::  only executed when Pair fails and
+::  restarting adb is both 1). part of
+::  the troubleshooting and 2). continues
+::  the script execution flow into Pair.
 goto RestartADB
 
 
@@ -244,10 +350,16 @@ goto RestartADB
 echo.
 echo [i] Wireless debugging setup completed successfully.
 pause
-exit
+goto NoExitEnd
 
 :ExitFailure
 echo.
 echo [!] Wireless debugging setup failed!
 pause
-exit
+goto NoExitEnd
+
+:NoExitEnd
+:: If the script is ran through a command prompt or shell,
+:: we don't want to close it by calling exit
+:: exit
+echo.
