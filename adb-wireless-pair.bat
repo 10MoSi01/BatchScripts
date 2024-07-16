@@ -45,33 +45,47 @@
 
 @echo off
 
+:: --------------------------------
+:: Variables
+:: --------------------------------
+
 :: Clear variables
-set adbDir=
-@REM set adbDir="G:\Android\android-sdk\platform-tools"
+set adbDir="G:\Android\android-sdk\platform-tools"
+set adbExe=adb.exe
 set adb=
-set restartADB=
 set ipPort=
 set pairCode=
 set newIpPort=
 set androidStudioExe=studio64.exe
 
+:: Env
+:: see [https://developer.android.com/tools/variables]
+set ADB_TRACE=
+
+:: --------------------------------
 :: Initial Setup
+:: --------------------------------
 :SetupADB
-if exist %adbDir%\adb.exe (
-    echo Using adb.exe at %adbDir%...
-    set adb=%adbDir%\adb.exe
+:: Find adb.exe
+if exist %adbDir%\%adbExe% (
+    :: Script variable
+    echo [i] Using %adbExe% at %adbDir%...
+    set adb=%adbDir%\%adbExe%
     goto RestartADB
-) else if exist %~1\adb.exe (
-    echo Using adb.exe at %~1...
-    set adb=%~1\adb.exe
+) else if exist %~1\%adbExe% (
+    :: Command line argument
+    echo [i] Using %adbExe% at %~1...
+    set adb=%~1\%adbExe%
     goto RestartADB
-) else if exist %cd%\adb.exe (
-    echo Using adb.exe at %cd%...
-    set adb=%cd%\adb.exe
+) else if exist %cd%\%adbExe% (
+    :: Current directory
+    echo [i] Using %adbExe% at %cd%...
+    set adb=%cd%\%adbExe%
     goto RestartADB
 ) else (
-    echo "Adb not found! Please provide adb's the directory path..."
-    set /p adbDir="adb directory: "
+    :: Not found
+    echo [i] Adb not found! Please provide adb's the directory path...
+    set /p adbDir="[+] adb directory: "
     goto SetupADB
 )
 
@@ -82,77 +96,158 @@ if exist %adbDir%\adb.exe (
 :: --------------------------------
 :RestartADB
 echo.
-set /p restartADB="Restart adb? (y/[n]): "
+set /p restartADB="[+] Restart adb? (y/[n]): "
 if "%restartADB%"=="" (
-    echo Skip restarting adb...
+    echo [i] Skip restarting adb...
     goto Pair
 )
 if not "%restartADB%"=="y" if not "%restartADB%"=="Y" (
-    echo Skip restarting adb...
+    echo [i] Skip restarting adb...
     goto Pair
 )
 
-echo Restarting adb...
+echo [i] Restarting adb...
 
 :: Kill adb
+echo [i] Killing adb server...
 %adb% kill-server
+echo [i] Stopping winnat service...
 net stop winnat
 
 :: Wait for Android Studio to start adb
 FOR /F "tokens=1" %%x IN ('tasklist /NH /FI "IMAGENAME eq %androidStudioExe%"') DO (
     if "%%x"=="%androidStudioExe%" (
-        echo Waiting for Android Studio to start ADB daemon...
+        echo [i] Waiting for Android Studio to start ADB daemon...
         timeout /t 2 /nobreak > nul
-        goto Pair
+
+        :: Check if Android Stdio has started adb by finding the adb.exe process
+        FOR /F "tokens=1" %%x IN ('tasklist /NH /FI "IMAGENAME eq %adbExe%"') DO (
+            if "%%x"=="%adbExe%" (
+                echo [i] Assuming Android Studio has started ADB daemon...
+                :: break the loop
+                goto Pair
+            )
+        )
+
+        echo [!] Android Studio failed to start ADB daemon, starting manually...
+        :: break the loop
+        goto ManualStartAdb
     )
 )
 
-
 :: Manually start adb
+:ManualStartAdb
+echo [i] Starting winnat service...
 net start winnat
+echo [i] Starting adb server...
 %adb% start-server
-echo adb has been restarted!
+
+:: Done
+echo [i] adb has been restarted!
+
 
 :: --------------------------------
 :: Pairs a wireless device
 :: --------------------------------
+
 :Pair
 echo.
 :: Prompt for IP:Port and Pair Code
-echo "Navigate to (Developer Options > Wireless Debugging > Pair device with pairing code)"
-set /p ipPort="Enter IP:PORT: "
-set /p pairCode="Enter Pair Code: "
+echo [i] Navigate to (Developer Options > Wireless Debugging > Pair device with pairing code)
+set /p ipPort="[+] Enter IP:PORT: "
+set /p pairCode="[+] Enter Pair Code: "
 
 :: Pairing the device
-echo Pairing device...
+echo [i] Pairing device...
 %adb% pair %ipPort% %pairCode%
 if errorlevel 1 (
-    echo Pairing failed. Please check your inputs and try again.
-    goto Pair
+    echo [!] Pairing failed!
+    :: Wait a second and then continue
+    timeout /t 1 /nobreak>nul
+
+    :: Fixes/Troubleshoot
+    :: see [https://stackoverflow.com/questions/33316006/adb-error-error-protocol-fault-couldnt-read-status-invalid-argument]
+    echo [i] Kindly double-check if the ip:port and pair code entered are correct.
+    echo [i] If the input provided was correct, common fixes and troubleshooting can be tries...
+    set /p tryFixesAndTroubleshooters="[+] Try common fixes and troubleshooting steps? ([y]/n)"
+    if "%tryFixesAndTroubleshooters%"=="" if "%tryFixesAndTroubleshooters%"=="y" if "%tryFixesAndTroubleshooters%"=="Y" (
+        goto CommonFixesAndTroubleshooting
+    ) else (
+        echo [i] Skip common fixes and troubleshooting steps...
+        echo.
+        echo [i] Please check your inputs and try again.
+        goto Pair
+    )
+
 )
+
 
 :: --------------------------------
 :: Connects to a wireless device
 :: after pairing
 :: --------------------------------
+
 :Connect
 echo.
 :: Prompt for re-entering IP:Port if necessary
-echo If the IP Addr or PORT has changed, reenter.
-echo Otherwise, press Enter to use the previous IP:Port.
-set /p newIpPort="Re-enter IP:Port (optional, read the notice above): "
+echo [i] If the IP Addr or PORT has changed, reenter.
+echo     Otherwise, press Enter to use the previous IP:Port.
+set /p newIpPort="[+] Re-enter IP:Port (optional, read the notice above): "
 if "%newIpPort%"=="" set newIpPort=%ipPort%
 
 :: Establishing connection for wireless debugging
-echo Establishing connection, initializing wireless debugging...
+echo [i] Establishing connection, initializing wireless debugging...
 %adb% connect %newIpPort%
 if errorlevel 1 (
-    echo Connection failed. Please check your IP:Port and try again.
+    echo [!] Connection failed!
+    :: Wait a second and then continue
+    timeout /t 1 /nobreak>nul    
+    echo.
+    echo [i] Please double-check the IP:Port and try again...
     goto Connect
 )
+goto ExitSuccess
 
-:Exit
+
+:: --------------------------------
+:: Common Fixes and Troubleshooting
+:: --------------------------------
+
+:CommonFixesAndTroubleshooting
+
+:: Restart netsh PortProxy interface
+set /p resetPortProxy="[+] Reset PortProxy? (y/[n]) : "
+if "%resetPortProxy%"=="y" if "%resetPortProxy%"=="Y" (
+    echo [i] Resetting port-proxy interface...
+    netsh interface portproxy reset
+) else (
+    echo [i] Skip reset port-proxy...
+)
+
+:: Enable adb verbose track stack
+set /p enableAdbTraceAll="[+] Enable adb trace all? ([y]/n)"
+if "%enableAdbTraceAll%"=="" if "%enableAdbTraceAll%"=="y" if "%enableAdbTraceAll%"=="Y" (
+    set ADB_TRACE=all
+) else (
+    echo [i] Skip enable adb trace all...
+)
+
+:: Continue
+goto RestartADB
+
+
+:: --------------------------------
+:: Exit
+:: --------------------------------
+
+:ExitSuccess
 echo.
-echo Wireless debugging setup completed successfully.
+echo [i] Wireless debugging setup completed successfully.
+pause
+exit
+
+:ExitFailure
+echo.
+echo [!] Wireless debugging setup failed!
 pause
 exit
