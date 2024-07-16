@@ -1,7 +1,7 @@
 :: Project Name: BatchScripts
 :: File: adb-wireless-pair.bat
 :: License: Sustainable Use License (SUL), Version 1.0
-:: Author: 10MoSo01
+:: Author: 10MoSi01
 :: 
 :: This file is part of BatchScripts.
 :: 
