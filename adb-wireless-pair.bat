@@ -84,7 +84,7 @@ if exist %adbDir%\%adbExe% (
     goto RestartADB
 ) else (
     :: Not found
-    echo [i] Adb not found! Please provide adb's the directory path...
+    echo [i] Adb not found! Please provide adb's directory path...
     set /p adbDir="[+] adb directory: "
     goto SetupADB
 )
