@@ -238,9 +238,9 @@ if errorlevel 1 (
     echo     common fixes and troubleshooting can be tried...
     set /p tryFixesAndTroubleshooters="[+] Try common fixes and troubleshooting steps? ([y]/n): "
     if "%tryFixesAndTroubleshooters%"=="" (
-        goto CommonFixesAndTroubleshooting
+        goto CommonPairFixesAndTroubleshooting
     ) else if /i "%tryFixesAndTroubleshooters%"=="y" (
-        goto CommonFixesAndTroubleshooting
+        goto CommonPairFixesAndTroubleshooting
     ) else (
         echo [i] Skip common fixes and troubleshooting steps...
         echo.
@@ -266,11 +266,16 @@ if "%initialMethodChoice%"=="1" (
     echo [i] If the IP Addr or PORT has changed, reenter.
     echo     Otherwise, press Enter to use the previous IP:Port.
     set /p newIpPort="[+] Re-enter IP:Port (optional, read the notice above): "
-    if "%newIpPort%"=="" set newIpPort=%ipPort%
+    if "%newIpPort%"=="" (
+        echo [i] Reusing pair IP:Port %ipPort%...
+        set newIpPort=%ipPort%
+    )
 ) else (
     :: Connecting to a previously paired device
+    setlocal enabledelayedexpansion
     set /p newIpPort="[+] Enter IP:Port : "
-    if "%newIpPort%"=="" (
+    @REM if "%newIpPort%"=="" (
+    if "!newIpPort!"=="" (
         echo [i] Invalid input!
         goto Connect
     )
@@ -279,15 +284,7 @@ if "%initialMethodChoice%"=="1" (
 :: Establishing connection for wireless debugging
 echo [i] Establishing connection, initializing wireless debugging...
 %adb% connect %newIpPort%
-:: if errorlevel 1 (
-if not "%errorlevel%"=="" (
-    echo [!] Connection failed!
-    :: Wait a second and then continue
-    timeout /t 1 /nobreak>nul    
-    echo.
-    echo [i] Please double-check the IP:Port and try again...
-    goto Connect
-) else if not errorlevel 0 (
+if errorlevel 1 (
     echo [!] Connection failed!
     :: Wait a second and then continue
     timeout /t 1 /nobreak>nul    
@@ -303,7 +300,7 @@ if not "%errorlevel%"=="" (
 :: Common Fixes and Troubleshooting
 :: --------------------------------
 
-:CommonFixesAndTroubleshooting
+:CommonPairFixesAndTroubleshooting
 
 :: Restart netsh PortProxy interface
 set /p resetPortProxy="[+] Reset PortProxy? ([y]/n) : "
